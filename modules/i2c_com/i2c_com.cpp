@@ -151,6 +151,14 @@ void i2cComWriteStateOfRelay(int relayId, int state) {
     }
 }
 
+void i2cComChangeInSubmodulesHandled() {
+    changeInSubmodule = false;
+    submoduleQty = 0;
+    scanRelayModules();
+    inicializeSubmodules();
+    i2cMode = NORMAL_FUNCTIONING;
+}
+
 int i2cComReadStateOfRelay(int relayId) {
     bool taskCompleted = false;
     int valueRead;
@@ -269,6 +277,7 @@ void i2cComUpdate() {
         if(checkChangesOfSubmodulesRecognized() == true) {
             changeInSubmodule = true;
             i2cMode = I2C_CHANGE_IN_MODULES_RECOGNIZED;
+            printf("%s\n", "entré en i2c");
         }
         
         if(i2cMode == IDENTIFYING_MODULE)
@@ -310,9 +319,6 @@ static void writeLedPin(int address, int state) {
     managerComI2C.write(submodulesRecognized[address].address, &submodulesRecognized[address].data, 1);
 }
 
-static void changeOfModulesDetectedUpdate() {
-    changeInSubmodule = true;
-}
 
 static bool checkChangesOfSubmodulesRecognized() {
     int i = INITIAL_ADDRESS_PCF8574;

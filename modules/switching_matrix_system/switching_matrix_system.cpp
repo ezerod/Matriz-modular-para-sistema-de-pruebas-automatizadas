@@ -40,7 +40,8 @@ void switchingMatrixSystemInit() {
 }
 
 void switchingMatrixSystemUpdate() {
-    if(checkChangeOfSubmodules() == true) {
+    if(i2cComChangeInSubmodulesRecognized() == true) {
+        printf("%s\n", "entré");
         handleChangeOfSubmodules();
     }
 
@@ -140,5 +141,12 @@ static bool checkChangeOfSubmodules() {
 }
 
 void handleChangeOfSubmodules() {
-
+    pcSerialComStringWrite("There was a change in the submodules connected!!\n");
+    pcSerialComStringWrite("Please, reconfigure the submodules\n");
+    stateTransition(START_SET_UP_MODULE);
+    idOfSubmodule = i2cComGetIdOfFirstSubmodule();
+    submoduleQty = i2cComGetSubmoduleQty();
+    submoduleCounter = 0;
+    relayMatrixClearMatrixes();
+    i2cComChangeInSubmodulesHandled();
 }

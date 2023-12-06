@@ -57,6 +57,10 @@ void relayMatrixInit() {
     vector<int> aux;
     aux.push_back(MANAGER_MODULE_ID);
     matrixOfModules.push_back(aux);
+    ManagerRelay11.write(OFF);
+    ManagerRelay12.write(OFF);
+    ManagerRelay21.write(OFF);
+    ManagerRelay22.write(OFF);
 }
 
 static bool addWithNeighbor(int row, int column, int submoduleId) {
@@ -111,6 +115,12 @@ static bool addWithNeighbor(int row, int column, int submoduleId) {
 
     // No neighboring module found
     return false;
+}
+
+void relayMatrixClearMatrixes() {
+    matrixOfModules.clear();
+    relayMatrix.clear();
+    relayMatrixInit();
 }
 
 // Function to generate the relay matrix from the module matrix

@@ -20,4 +20,5 @@ void i2cComWriteStateOfRelay                (int relayId, int state);
 int  i2cComReadStateOfRelay                 (int relayId);
 void i2cComStartIdentificationOfSubmodule   (int submoduleId);
 void i2cComStopIdentificationOfSubmodule    (int submoduleId);
+void i2cComChangeInSubmodulesHandled();
 #endif
