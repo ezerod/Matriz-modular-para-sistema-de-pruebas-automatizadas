@@ -1,0 +1,15 @@
+#ifndef STATE_MACHINE__H
+#define STATE_MACHINE__H
+
+
+typedef enum{
+    START_SET_UP_MODULE,
+    SET_ROW_POSITION_OF_MODULE,
+    SET_COL_POSITION_OF_MODULE,
+    END_SET_UP_MODULE,
+    PRINCIPAL_MENU,
+    MANUAL_MODE,
+    SEQUENCE_MODE
+}systemStateMachine_t;
+
+#endif

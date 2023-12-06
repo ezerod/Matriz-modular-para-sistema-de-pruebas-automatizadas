@@ -18,19 +18,21 @@ typedef enum {
 UnbufferedSerial uartUsb(USBTX, USBRX, 115200);
 static systemStateMachine_t pcSerialSystemStateMachine;
 static pcSerialComUserInteraction_t userInteraction = TALK_TO_USER;
-static bool modeSelected = false;
 static modesOfOperation_t modeSelectUser;
-static char* validOptions = nullptr;
-static bool optionSelected = false;
-static char _optionFromUser;
-static int optionQty = 0;
+static bool modeSelected = false;
+static int row = 0;
+static int col = 0;
+static char userResponse[10];
+static bool dataAvailableToRead = false;
 
 static void printWelcomeMessage();
 static void startSetUpModuleUpdate();
-static void getPositionOfModule();
+static void getRowPositionOfModule();
+static void getColPositionOfModule();
 static void endSetUpModuleUpdate();
 static void principalMenuUpdate();
-
+static void manualModeUpdate();
+static bool getUserResponse();
 
 void pcSerialComInit() {
     printWelcomeMessage();
@@ -45,6 +47,7 @@ char pcSerialComCharRead()
     return receivedChar;
 }
 
+
 void pcSerialComStringWrite( const char* str )
 {
     uartUsb.write( str, strlen(str) );
@@ -53,25 +56,50 @@ void pcSerialComStringWrite( const char* str )
 void pcSerialComUpdate() {
     switch(pcSerialSystemStateMachine) {
         case START_SET_UP_MODULE: startSetUpModuleUpdate(); break;
-        case SET_POSITION_OF_MODULE: getPositionOfModule(); break;
+        case SET_ROW_POSITION_OF_MODULE: getRowPositionOfModule(); break;
+        case SET_COL_POSITION_OF_MODULE: getColPositionOfModule(); break;
         case END_SET_UP_MODULE: endSetUpModuleUpdate(); break;
         case PRINCIPAL_MENU: principalMenuUpdate(); break;
         //case SEQUENCE_MODE:
-        //case MANUAL_MODE
+        case MANUAL_MODE: manualModeUpdate();
         default: break;
     }
 }
 
-bool pcSerialComGetPositionFromUser(char &optionFromUser) {
-    if(optionSelected) {
-        optionFromUser = _optionFromUser; 
-    }
-
-    return optionSelected;
-}
-
 void pcSerialComSetSystemState(systemStateMachine_t systemState) {
     pcSerialSystemStateMachine = systemState;
+    dataAvailableToRead = false;
+}
+
+bool pcSerialComGetRow(char* rowPosition) {
+    bool rowReadCopy = dataAvailableToRead;
+    strcpy(rowPosition, userResponse);
+    return rowReadCopy;
+}
+
+bool pcSerialComGetCol(char* colPosition) {
+    bool colReadCopy = dataAvailableToRead;
+    strcpy(colPosition, userResponse);
+    return colReadCopy;
+}
+
+bool getUserResponse() {
+    char receivedChar = pcSerialComCharRead();
+    bool taskCompleted = false;
+    static int len = 0;
+    if(receivedChar != '\0') {
+        if(receivedChar != 13) {
+            userResponse[len] = receivedChar;
+            len ++;
+        }
+        else {
+            userResponse[len] = '\0';
+            len = 0;
+            taskCompleted = true;
+        }
+    }
+
+    return taskCompleted;
 }
 
 static void printWelcomeMessage() {
@@ -91,27 +119,38 @@ static void startSetUpModuleUpdate() {
     
 }
 
-static void getPositionOfModule() {
-    char receivedChar;
+static void getRowPositionOfModule() {
     switch(userInteraction) {
         case TALK_TO_USER:
-            pcSerialComStringWrite(validOptions);
+            pcSerialComStringWrite("Insert a row to place the module:\t");
             userInteraction = WAIT_USER_RESPONSE;
             break;
         case WAIT_USER_RESPONSE:
-            receivedChar = pcSerialComCharRead();
-            if(isdigit(receivedChar)) {
-                if(atoi(&receivedChar) < optionQty) {
-                    _optionFromUser = receivedChar;
-                    userInteraction = TALK_TO_USER;
-                    optionSelected = true;
-                }
+            if(getUserResponse()) {
+                userInteraction = TALK_TO_USER;
+                dataAvailableToRead = true;
             }
+            break;
         default: break;
     }
 }
 
-
+static void getColPositionOfModule() {
+    char receivedChar;
+    switch(userInteraction) {
+        case TALK_TO_USER:
+            pcSerialComStringWrite("Insert a column to place the module:\t");
+            userInteraction = WAIT_USER_RESPONSE;
+            break;
+        case WAIT_USER_RESPONSE:
+            if(getUserResponse()) {
+                userInteraction = TALK_TO_USER;
+                dataAvailableToRead = true;
+            }
+            break;
+        default: break;
+    }
+}
 
 static void endSetUpModuleUpdate() {
     pcSerialComStringWrite("The module is configured\n");
@@ -151,4 +190,19 @@ static void principalMenuUpdate() {
 bool pcSerialComPrincipalMenuUserSelection(modesOfOperation_t &modeSelect) {
     modeSelect = modeSelectUser;
     return modeSelected;
+}
+
+static void manualModeUpdate() {
+    switch(userInteraction) {
+        case TALK_TO_USER:
+            pcSerialComStringWrite("--------------------------------\n");
+            pcSerialComStringWrite("         MANUAL OPERATION       \n");
+            pcSerialComStringWrite("--------------------------------\n");
+            pcSerialComStringWrite("Enter a relay ID to toggle state:\t");
+
+            userInteraction = WAIT_USER_RESPONSE;
+            break;
+        case WAIT_USER_RESPONSE: break;
+            //getUserResponse();
+    }
 }

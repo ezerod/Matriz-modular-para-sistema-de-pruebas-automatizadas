@@ -6,6 +6,7 @@
 #include "mbed.h"
 #include "modes_of_operation.h"
 #include "relay_matrix.h"
+#include "arm_book_lib.h"
 #include <string>
 
 systemStateMachine_t systemStateMachine;
@@ -13,12 +14,13 @@ static int submoduleQty = 0;
 static int idOfSubmodule = 0;
 static int submoduleCounter = 0;
 static int rowPosition = 0;
-static int colPosition = 0;
+static int colPosition = 1;
 static bool changeOfSubmodules = false;
 
 static void updateModules();
 static void startSetUpModuleUpdate();
-static void setPositionOfModuleUpdate();
+static void setRowPositionOfModuleUpdate();
+static void setColPositionOfModuleUpdate();
 static void endSetUpModuleUpdate();
 static void principalMenuUpdate();
 static void sequenceModeUpdate();
@@ -33,11 +35,8 @@ void switchingMatrixSystemInit() {
     relayMatrixInit();
     //eventLogInit();
     submoduleQty = i2cComGetSubmoduleQty();
-    printf("%d\n", submoduleQty);
     idOfSubmodule = i2cComGetIdOfFirstSubmodule();
-    printf("%d\n", idOfSubmodule);
     stateTransition(START_SET_UP_MODULE);
-    printf("%s\n", "arranco");
 }
 
 void switchingMatrixSystemUpdate() {
@@ -49,7 +48,8 @@ void switchingMatrixSystemUpdate() {
 
     switch(systemStateMachine) {
         case START_SET_UP_MODULE: startSetUpModuleUpdate();  break;
-        case SET_POSITION_OF_MODULE: setPositionOfModuleUpdate(); break;
+        case SET_ROW_POSITION_OF_MODULE: setRowPositionOfModuleUpdate(); break;
+        case SET_COL_POSITION_OF_MODULE: setColPositionOfModuleUpdate(); break;
         case END_SET_UP_MODULE: endSetUpModuleUpdate(); break;
         case PRINCIPAL_MENU: principalMenuUpdate(); break;
         //case SEQUENCE_MODE: sequenceModeUpdate(); break;
@@ -60,25 +60,37 @@ void switchingMatrixSystemUpdate() {
 
 
 static void startSetUpModuleUpdate() {
-    char** validOptions;
-    int optionQty = 0;
     i2cComStartIdentificationOfSubmodule(idOfSubmodule);
-    stateTransition(SET_POSITION_OF_MODULE);
+    stateTransition(SET_ROW_POSITION_OF_MODULE);
 }
 
-static void setPositionOfModuleUpdate() {
-    stateTransition(END_SET_UP_MODULE);
-    
+static void setRowPositionOfModuleUpdate() {
+    char buffer[10];
+    char* aux;
+    if(pcSerialComGetRow(buffer)) {
+        rowPosition = strtoul(buffer, &aux, 10);
+        stateTransition(SET_COL_POSITION_OF_MODULE);
+    }
+}
+
+static void setColPositionOfModuleUpdate() {
+    char buffer[10];
+    char* aux;
+    if( pcSerialComGetCol(buffer)) {
+        colPosition = strtoul(buffer, &aux, 10);
+        stateTransition(END_SET_UP_MODULE);
+    }
 }
 
 static void endSetUpModuleUpdate() {
-    static int i = 0;
-    relayMatrixInsertModule(idOfSubmodule, 1 , i);
-    i++;
-    if(submoduleCounter == submoduleQty - 1) {
+    if(relayMatrixInsertModule(idOfSubmodule, rowPosition, colPosition++) == false) {
+        pcSerialComStringWrite("La posición ingresada para ingresar el módulo es invalida!!");
+        stateTransition(START_SET_UP_MODULE);
+    }
+    else if(submoduleCounter == submoduleQty - 1) {
         relayMatrixGenerate();
         relayMatrixPrintMatrix();
-        stateTransition(PRINCIPAL_MENU);
+        stateTransition(MANUAL_MODE);
     }
     else {
         submoduleCounter++;
@@ -101,7 +113,18 @@ static void principalMenuUpdate() {
 }
 
 static void manualModeUpdate() {
-    
+    char id[2];
+ //   if(getRelayIdToToggle(id)) {
+
+   // }
+
+   relayMatrixWriteStateOfRelay(5, ON);
+   relayMatrixPrintMatrix();
+   relayMatrixWriteStateOfRelay(9, ON);
+   relayMatrixPrintMatrix();
+   relayMatrixWriteStateOfRelay(5, OFF);
+   relayMatrixPrintMatrix();
+   relayMatrixWriteStateOfRelay(9, OFF);
 }
 
 static void stateTransition(systemStateMachine_t nextState) {

@@ -7,7 +7,7 @@ int main()
     switchingMatrixSystemInit();
     while (true) {
         switchingMatrixSystemUpdate();
-        delay(500);
+        delay(50);
     }
 }
 

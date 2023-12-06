@@ -8,7 +8,7 @@ void i2cComInit();
 void i2cComUpdate();
 
 int  i2cComGetSubmoduleQty();
-int i2cComGetIdOfFirstSubmodule();
+int  i2cComGetIdOfFirstSubmodule();
 void i2cComSetRelay11Id(int submoduleId, int relayId);
 void i2cComSetRelay12Id(int submoduleId, int relayId);
 void i2cComSetRelay21Id(int submoduleId, int relayId);

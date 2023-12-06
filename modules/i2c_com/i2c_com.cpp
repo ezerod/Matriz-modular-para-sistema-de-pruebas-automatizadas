@@ -18,7 +18,7 @@
 #define RELAY_ROW1_COL1_IN_MASK 0b00010000
 #define RELAY_ROW1_COL2_IN_MASK 0b00100000
 #define RELAY_ROW2_COL1_IN_MASK 0b01000000
-#define BLINK_TIME_MS 200
+#define BLINK_TIME_MS 500
 //#define RELAY_ROW2_COL2_IN_MASK 0b10000000; NOT USED BECAUSE PIN QTY IS NOT SUFFICIENT
 #define IDENTIFICATION_LED 0b10000000
 
@@ -66,7 +66,7 @@ static bool changeInSubmodule = false;
 
 static bool identifyingModule = false;
 static int submoduleRecognizedIndexToIdentify = 0;
-static nonBlockingDelay_t identificationBlinkyDelay;
+nonBlockingDelay identificationBlinkyDelay(500);
 
 
 static void writeStateOfRelayOnSubmodule(int indexOfSubmodule, int relayId, int state);
@@ -74,7 +74,6 @@ static void writeLedPin(int address, int state);
 static void identifyingModuleUpdate();
 static void normalFunctioningUpdate();
 static void changeOfModulesDetectedUpdate();
-static void ledBlink();
 static void inicializeSubmodules();
 static void scanRelayModules();
 static int readStateOfRelayOnSubmodule(int indexOfSubmodule, int relay);
@@ -178,24 +177,20 @@ int i2cComReadStateOfRelay(int relayId) {
 }
 
 int i2cComGetIdOfFirstSubmodule() {
-    return 2;
-}
-
-
-static void getModulesForMatrix() {
-    scanRelayModules();
-    inicializeSubmodules();
-    
+    return submodulesRecognized[0].submoduleId;
 }
 
 
 static void scanRelayModules() {
     int i = INITIAL_ADDRESS_PCF8574;
     char testMessage = 0x00;
+    int submoduleId = 2;
     while(i <= FINAL_ADDRESS_PCF8574) {
         if(managerComI2C.write(i, &testMessage, 1) == 0) {
             submodulesRecognized[submoduleQty].address = i;
+            submodulesRecognized[submoduleQty].submoduleId = submoduleId;
             submoduleQty++;
+            submoduleId++;
         }
         i = i + 2;
     }
@@ -203,7 +198,6 @@ static void scanRelayModules() {
 
 static void inicializeSubmodules() {
     char configurationOfModule = MODULE_2X2_CONFIG;
-    int idToAssign = 2;
     for(int i = 0; i < submoduleQty; i++) {
         writeStateOfRelayOnSubmodule(i, RELAY_ROW1_COL1, (int)(MODULE_2X2_CONFIG & RELAY_ROW1_COL1));
         writeStateOfRelayOnSubmodule(i, RELAY_ROW1_COL2, (int)(MODULE_2X2_CONFIG & RELAY_ROW1_COL2));
@@ -236,7 +230,7 @@ static int readStateOfRelayOnSubmodule(int indexOfSubmodule, int relay) {
     managerComI2C.read(submodulesRecognized[indexOfSubmodule].address, &submodulesRecognized[indexOfSubmodule].data, 1);
     switch(relay) {
         case RELAY_ROW1_COL1:
-            if( !(submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1_IN_MASK)) && !(submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1)))
+            if( (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1)))
                 pinValueRead = ON;
             else if((submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1)))
                 pinValueRead = OFF;
@@ -244,7 +238,7 @@ static int readStateOfRelayOnSubmodule(int indexOfSubmodule, int relay) {
         case RELAY_ROW1_COL2:
             if( (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2)))
                 pinValueRead = ON;
-            else if((submodulesRecognized[indexOfSubmodule].data & (~RELAY_ROW1_COL2_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2)))
+            else if((submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2)))
                 pinValueRead = OFF;
             break;
         case RELAY_ROW2_COL1:
@@ -268,7 +262,6 @@ void i2cComInit() {
     managerComI2C.frequency(100000);
     scanRelayModules();
     inicializeSubmodules();
-    nonBlockingDelayInit( &identificationBlinkyDelay, BLINK_TIME_MS );
 }
 
 void i2cComUpdate() {
@@ -283,7 +276,7 @@ void i2cComUpdate() {
 }
 
 static void identifyingModuleUpdate() {
-    if(nonBlockingDelayRead(&identificationBlinkyDelay)) {
+    if(identificationBlinkyDelay.read()) {
         if(submodulesRecognized[submoduleRecognizedIndexToIdentify].identificationLedOut)
             writeLedPin(submoduleRecognizedIndexToIdentify, OFF);
         else
@@ -295,6 +288,7 @@ void i2cComStartIdentificationOfSubmodule(int submoduleId) {
     for(int i = 0; i < submoduleQty; i++) {
         if(submodulesRecognized[i].submoduleId == submoduleId) {
             submoduleRecognizedIndexToIdentify = i;
+            printf("%d\n", submoduleRecognizedIndexToIdentify);
         }
     }
     i2cMode = IDENTIFYING_MODULE;
@@ -306,9 +300,12 @@ void i2cComStopIdentificationOfSubmodule(int submoduleId) {
 }
 
 static void writeLedPin(int address, int state) {
-    if(state == ON) 
+    submodulesRecognized[address].data = submodulesRecognized[address].data & (~IDENTIFICATION_LED);
+    submodulesRecognized[address].identificationLedOut = false;
+    if(state == ON) {
         submodulesRecognized[address].data = submodulesRecognized[address].data | IDENTIFICATION_LED;
-    
+        submodulesRecognized[address].identificationLedOut = true;
+    }
     managerComI2C.write(submodulesRecognized[address].address, &submodulesRecognized[address].data, 1);
 }
 
@@ -319,7 +316,7 @@ static void changeOfModulesDetectedUpdate() {
 static bool checkChangesOfSubmodulesRecognized() {
     int i = INITIAL_ADDRESS_PCF8574;
     int index = 0;
-    char testMessage = 1;
+    char testMessage = 0;
     bool changeDetected = false;
     
     while(i <= FINAL_ADDRESS_PCF8574 && changeDetected == false) {
@@ -327,9 +324,10 @@ static bool checkChangesOfSubmodulesRecognized() {
             if(index < submoduleQty)
                 if(submodulesRecognized[index].address != i)
                     changeDetected = true;
+            
+            index ++;
         }
         i = i + 2;
-        index ++;
     }
 
     return changeDetected;
