@@ -11,5 +11,6 @@ void pcSerialComSetSystemState(systemStateMachine_t systemState);
 bool pcSerialComPrincipalMenuUserSelection(modesOfOperation_t &modeSelect);
 bool pcSerialComGetRow(char* rowPosition);
 bool pcSerialComGetCol(char* colPosition);
+bool pcSerialComGetRelayIdToToggle(char* relayToToggle);
 
 #endif

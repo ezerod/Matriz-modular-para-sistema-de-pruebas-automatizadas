@@ -7,5 +7,5 @@ void relayMatrixGenerate();
 bool relayMatrixInsertModule(int submoduleId, int row, int col);
 void relayMatrixWriteStateOfRelay(int relayId, int state);
 void relayMatrixPrintMatrix();
-
+void relayMatrixToggleRelay(int relayId);
 #endif

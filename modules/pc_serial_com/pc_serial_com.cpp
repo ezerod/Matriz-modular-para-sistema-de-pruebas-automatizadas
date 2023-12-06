@@ -202,7 +202,18 @@ static void manualModeUpdate() {
 
             userInteraction = WAIT_USER_RESPONSE;
             break;
-        case WAIT_USER_RESPONSE: break;
-            //getUserResponse();
+        case WAIT_USER_RESPONSE:
+            if(getUserResponse()) {
+                userInteraction = TALK_TO_USER;
+                dataAvailableToRead = true;
+            }
+            break;
+        default: break;
     }
+}
+
+bool pcSerialComGetRelayIdToToggle(char* relayToToggle) {
+    bool relayReadCopy = dataAvailableToRead;
+    strcpy(relayToToggle, userResponse);
+    return relayReadCopy;
 }

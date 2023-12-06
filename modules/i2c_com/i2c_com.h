@@ -13,7 +13,7 @@ void i2cComSetRelay11Id(int submoduleId, int relayId);
 void i2cComSetRelay12Id(int submoduleId, int relayId);
 void i2cComSetRelay21Id(int submoduleId, int relayId);
 void i2cComSetRelay22Id(int submoduleId, int relayId);
-
+void i2cComToggleRelay(int relayId);
 
 bool i2cComChangeInSubmodulesRecognized     ();
 void i2cComWriteStateOfRelay                (int relayId, int state);

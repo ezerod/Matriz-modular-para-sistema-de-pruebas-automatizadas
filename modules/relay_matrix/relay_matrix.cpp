@@ -234,3 +234,20 @@ static void managerWriteStateOfRelay(int relayId, int state) {
     else if(relayId == managerRelaysId.relay22Id)
         ManagerRelay22.write(state);
 }
+
+void relayMatrixToggleRelay(int relayId) {
+    if(relayId == managerRelaysId.relay11Id) {
+        (ManagerRelay11.read()) ? ManagerRelay11.write(OFF) : ManagerRelay11.write(ON);
+    }
+    else if(relayId == managerRelaysId.relay12Id) {
+        (ManagerRelay12.read()) ? ManagerRelay12.write(OFF) : ManagerRelay12.write(ON);
+    }
+    else if(relayId == managerRelaysId.relay21Id) {
+        (ManagerRelay21.read()) ? ManagerRelay21.write(OFF) : ManagerRelay21.write(ON);
+    }
+    else if(relayId == managerRelaysId.relay22Id) {
+        (ManagerRelay22.read()) ? ManagerRelay22.write(OFF) : ManagerRelay22.write(ON);
+    }
+    else
+        i2cComToggleRelay(relayId);
+}

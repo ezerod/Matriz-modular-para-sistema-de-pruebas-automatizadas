@@ -113,18 +113,16 @@ static void principalMenuUpdate() {
 }
 
 static void manualModeUpdate() {
-    char id[2];
- //   if(getRelayIdToToggle(id)) {
+    char buffer[10];
+    int relayToToggle = 0;
+    char* aux;
+    if(pcSerialComGetRelayIdToToggle(buffer)) {
+        relayToToggle = strtoul(buffer, &aux, 10);
+        relayMatrixToggleRelay(relayToToggle);
+        relayMatrixPrintMatrix();
+        stateTransition(MANUAL_MODE);
+    }
 
-   // }
-
-   relayMatrixWriteStateOfRelay(5, ON);
-   relayMatrixPrintMatrix();
-   relayMatrixWriteStateOfRelay(9, ON);
-   relayMatrixPrintMatrix();
-   relayMatrixWriteStateOfRelay(5, OFF);
-   relayMatrixPrintMatrix();
-   relayMatrixWriteStateOfRelay(9, OFF);
 }
 
 static void stateTransition(systemStateMachine_t nextState) {

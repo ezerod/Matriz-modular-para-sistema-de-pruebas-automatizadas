@@ -168,7 +168,7 @@ int i2cComReadStateOfRelay(int relayId) {
             taskCompleted = true;
         }
         else if(relayId == submodulesRecognized[i].relay22Id) {
-            readStateOfRelayOnSubmodule(i, RELAY_ROW2_COL2);
+            valueRead = readStateOfRelayOnSubmodule(i, RELAY_ROW2_COL2);
             taskCompleted = true;
         }
     }
@@ -215,7 +215,7 @@ static void writeStateOfRelayOnSubmodule(int indexOfSubmodule, int relay, int st
         case RELAY_ROW2_COL2: submodulesRecognized[indexOfSubmodule].matrixPinRelay22Out = state; break;
     }
 
-    submodulesRecognized[indexOfSubmodule].data = 0b00000000;
+    submodulesRecognized[indexOfSubmodule].data = 0b01110000;
     if ( submodulesRecognized[indexOfSubmodule].matrixPinRelay11Out ) submodulesRecognized[indexOfSubmodule].data |= 0b00000001;
     if ( submodulesRecognized[indexOfSubmodule].matrixPinRelay12Out ) submodulesRecognized[indexOfSubmodule].data |= 0b00000010; 
     if ( submodulesRecognized[indexOfSubmodule].matrixPinRelay21Out ) submodulesRecognized[indexOfSubmodule].data |= 0b00000100; 
@@ -230,25 +230,25 @@ static int readStateOfRelayOnSubmodule(int indexOfSubmodule, int relay) {
     managerComI2C.read(submodulesRecognized[indexOfSubmodule].address, &submodulesRecognized[indexOfSubmodule].data, 1);
     switch(relay) {
         case RELAY_ROW1_COL1:
-            if( (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1)))
+            if( /*(submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1_IN_MASK)) &&*/ (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1)))
                 pinValueRead = ON;
-            else if((submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL1)))
+            else
                 pinValueRead = OFF;
             break;
         case RELAY_ROW1_COL2:
-            if( (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2)))
+            if( /*(submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2_IN_MASK)) && */(submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2)))
                 pinValueRead = ON;
-            else if((submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW1_COL2)))
+            else
                 pinValueRead = OFF;
             break;
         case RELAY_ROW2_COL1:
-            if( (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW2_COL1_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW2_COL1)))
+            if( /*(submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW2_COL1_IN_MASK)) &&*/ (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW2_COL1)))
                 pinValueRead = ON;
-            else if((submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW2_COL1_IN_MASK)) && (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW2_COL1)))
+            else
                 pinValueRead = OFF;
             break;
         case RELAY_ROW2_COL2:
-            if( (submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW2_COL1_IN_MASK)))
+            if( submodulesRecognized[indexOfSubmodule].data & (RELAY_ROW2_COL2))
                 pinValueRead = ON;
             else
                 pinValueRead = OFF;
@@ -270,6 +270,7 @@ void i2cComUpdate() {
             changeInSubmodule = true;
             i2cMode = I2C_CHANGE_IN_MODULES_RECOGNIZED;
         }
+        
         if(i2cMode == IDENTIFYING_MODULE)
             identifyingModuleUpdate();
     }
@@ -316,11 +317,10 @@ static void changeOfModulesDetectedUpdate() {
 static bool checkChangesOfSubmodulesRecognized() {
     int i = INITIAL_ADDRESS_PCF8574;
     int index = 0;
-    char testMessage = 0;
     bool changeDetected = false;
     
     while(i <= FINAL_ADDRESS_PCF8574 && changeDetected == false) {
-        if(managerComI2C.write(i, &testMessage, 1) == 0) {
+        if(managerComI2C.write(i, &submodulesRecognized[index].data, 1) == 0) {
             if(index < submoduleQty)
                 if(submodulesRecognized[index].address != i)
                     changeDetected = true;
@@ -331,4 +331,14 @@ static bool checkChangesOfSubmodulesRecognized() {
     }
 
     return changeDetected;
+}
+
+void i2cComToggleRelay(int relayId) {
+    int readResult = i2cComReadStateOfRelay(relayId);
+    if (readResult == ON) {
+        i2cComWriteStateOfRelay(relayId, OFF);
+    }
+    else if( readResult == OFF) {
+        i2cComWriteStateOfRelay(relayId, ON);
+    }
 }
