@@ -1,133 +1,60 @@
+//=====[Libraries]=============================================================
 #include "relay_matrix.h"
-#include "i2c_com.h"
 #include "pc_serial_com.h"
 #include "arm_book_lib.h"
 #include <string>
 #include <vector>
 #include "mbed.h"
+#include "relay.h"
 
-
+//=====[Declaration of private defines]========================================
 #define MANAGER_MODULE_ID 1
-#define MANAGER_RELAY11_PIN D7
-#define MANAGER_RELAY12_PIN D6
-#define MANAGER_RELAY21_PIN D5
-#define MANAGER_RELAY22_PIN D4
 
-
-typedef struct {
-    int relay11Id;
-    int relay12Id;
-    int relay21Id;
-    int relay22Id;    
-} managerRelaysId_t;
-
+//=====[Declaration of private data types]=====================================
 typedef vector<vector<int>> Matrix;
 
-DigitalOut ManagerRelay11(MANAGER_RELAY11_PIN);
-DigitalOut ManagerRelay12(MANAGER_RELAY12_PIN);
-DigitalOut ManagerRelay21(MANAGER_RELAY21_PIN);
-DigitalOut ManagerRelay22(MANAGER_RELAY22_PIN);
+//=====[Declaration and initialization of public global objects]===============
+//=====[Declaration of external public global variables]=======================
+//=====[Declaration and initialization of public global variables]=============
 
+//=====[Declaration and initialization of private global variables]============
+static Matrix matrixOfModules;
+static Matrix relayMatrix;
 
+//=====[Declarations (prototypes) of private functions]========================
 static bool hasModule(int row, int column);
 static bool addWithNeighbor(int row, int column, int submoduleId);
-static void managerModuleSetRelay11Id(int idToAssign);
-static void managerModuleSetRelay12Id(int idToAssign);
-static void managerModuleSetRelay21Id(int idToAssign);
-static void managerModuleSetRelay22Id(int idToAssign);
-static void managerWriteStateOfRelay(int relayId, int state);
-
-static std::vector< std::vector<int> > matrixOfModules;
-static std::vector< std::vector<int> > relayMatrix;
-static vector<Matrix> predefinedSequence;
-static managerRelaysId_t managerRelaysId;
+static void initializeManagerModule();
 
 
-
-static bool hasModule(int row, int column) {
-    // Check if the given position is within the bounds of the matrix
-    if (row >= 0 && row < matrixOfModules.size() && column >= 0 && column < matrixOfModules[row].size()) {
-        // Check if the module ID at the specified position is not zero
-        return matrixOfModules[row][column] != 0;
-    }
-    return false;
-}
-
+//=====[Implementations of public functions]===================================
 void relayMatrixInit() {
-    vector<int> aux;
-    aux.push_back(MANAGER_MODULE_ID);
-    matrixOfModules.push_back(aux);
-    ManagerRelay11.write(OFF);
-    ManagerRelay12.write(OFF);
-    ManagerRelay21.write(OFF);
-    ManagerRelay22.write(OFF);
+    initializeManagerModule();
 }
 
-static bool addWithNeighbor(int row, int column, int submoduleId) {
-    // Ensure that the row is within the current matrix size
-    if (row < 0) {
-        return false;
+void relayMatrixUpdate(bool changeInSubmodules) {
+    if(changeInSubmodules) {
+        relayMatrixClearMatrixes();
     }
-
-    // Ensure that the column is within the current row size
-    if (column < 0) {
-        return false;
-    }
-
-    // Adjust the row size if needed
-    if (row >= matrixOfModules.size()) {
-        matrixOfModules.resize(row + 1, std::vector<int>(0, 0));
-    }
-
-    // Adjust the column size if needed for the specified row
-    if (column >= matrixOfModules[row].size()) {
-        matrixOfModules[row].resize(column + 1, 0);
-    }
-
-    // Check if the position is already occupied
-    if (matrixOfModules[row][column] != 0) {
-        return false;
-    }
-
-    // Check left
-    if (column > 0 && hasModule(row, column - 1)) {
-        matrixOfModules[row][column] = submoduleId;
-        return true;
-    }
-
-    // Check below
-    if (row < matrixOfModules.size() - 1 && hasModule(row + 1, column)) {
-        matrixOfModules[row][column] = submoduleId;
-        return true;
-    }
-
-    // Check right
-    if (column < matrixOfModules[row].size() - 1 && hasModule(row, column + 1)) {
-        matrixOfModules[row][column + 1] = submoduleId;
-        return true;
-    }
-
-    // Check above
-    if (row > 0 && hasModule(row - 1, column)) {
-        matrixOfModules[row][column] = submoduleId;
-        return true;
-    }
-
-    // No neighboring module found
-    return false;
 }
 
 void relayMatrixClearMatrixes() {
     matrixOfModules.clear();
     relayMatrix.clear();
-    relayMatrixInit();
+    
+    relayClearIdOfRelays();
+    initializeManagerModule();
 }
 
-// Function to generate the relay matrix from the module matrix
+bool relayMatrixInsertModule(int submoduleId, int row, int col) {
+    bool moduleAdded = addWithNeighbor(row, col, submoduleId);
+    return moduleAdded;
+}
+
 void relayMatrixGenerate() {
     relayMatrix.clear();
-    vector<int> auxRow1;  // Cambiado a vector<int>
-    vector<int> auxRow2;  // Cambiado a vector<int>
+    vector<int> auxRow1;
+    vector<int> auxRow2; 
     int idToAssign = 1;
 
     for (int i = 0; i < matrixOfModules.size(); i++) {
@@ -139,15 +66,15 @@ void relayMatrixGenerate() {
                 auxRow2.push_back(idToAssign + 3);
                 
                 if (matrixOfModules[i][j] != MANAGER_MODULE_ID) {
-                    i2cComSetRelay11Id(matrixOfModules[i][j], idToAssign);
-                    i2cComSetRelay12Id(matrixOfModules[i][j], idToAssign + 1);
-                    i2cComSetRelay21Id(matrixOfModules[i][j], idToAssign + 2);
-                    i2cComSetRelay22Id(matrixOfModules[i][j], idToAssign + 3);
+                    relayAddSubmoduleIdOfRelay(matrixOfModules[i][j], idToAssign);
+                    relayAddSubmoduleIdOfRelay(matrixOfModules[i][j], idToAssign + 1);
+                    relayAddSubmoduleIdOfRelay(matrixOfModules[i][j], idToAssign + 2);
+                    relayAddSubmoduleIdOfRelay(matrixOfModules[i][j], idToAssign + 3);
                 } else {
-                    managerModuleSetRelay11Id(idToAssign);
-                    managerModuleSetRelay12Id(idToAssign + 1);
-                    managerModuleSetRelay21Id(idToAssign + 2);
-                    managerModuleSetRelay22Id(idToAssign + 3);
+                    relayAddManagerIdOfRelay(idToAssign);
+                    relayAddManagerIdOfRelay(idToAssign + 1);
+                    relayAddManagerIdOfRelay(idToAssign + 2);
+                    relayAddManagerIdOfRelay(idToAssign + 3);
                 }
                 idToAssign += 4;
             } else {
@@ -167,6 +94,7 @@ void relayMatrixGenerate() {
 
 void relayMatrixPrintMatrix() {
     char buffer[100];
+    int stateOfRelay;
 
     for (int i = 0; i < relayMatrix.size(); i++) {
         for (int j = 0; j < relayMatrix[i].size(); j++) {
@@ -183,12 +111,17 @@ void relayMatrixPrintMatrix() {
 
         for (int j = 0; j < relayMatrix[i].size(); j++) {
             pcSerialComStringWrite("    ");
-            if (i2cComReadStateOfRelay(relayMatrix[i][j]) == ON) {
-                
+            stateOfRelay = relayReadState(relayMatrix[i][j]);
+
+            if (stateOfRelay == ON) {
                 pcSerialComStringWrite("CLOSED");
-            } else {
+            } else if(stateOfRelay == OFF) {
                 pcSerialComStringWrite(" OPEN  ");
             }
+            else {
+                pcSerialComStringWrite("UNKNOWN");
+            }
+
             pcSerialComStringWrite("  ");
         }
         pcSerialComStringWrite("\n");
@@ -199,65 +132,81 @@ void relayMatrixPrintMatrix() {
     }
 }
 
-void relayMatrixWriteStateOfRelay(int relayId, int state) {
-    if(relayId != managerRelaysId.relay11Id && relayId != managerRelaysId.relay12Id &&
-       relayId != managerRelaysId.relay21Id && relayId != managerRelaysId.relay22Id)
-        i2cComWriteStateOfRelay(relayId, state);
+bool relayMatrixToggleRelay(int relayId) {
+    return relayToggle(relayId);
+}
+
+bool relayMatrixWriteStateOfRelay(int relayId, int state) {
+    bool relayStateWritten;
+    if(state == ON) {
+        relayStateWritten = relayClose(relayId);
+    }
     else {
-        managerWriteStateOfRelay(relayId, state);
+        relayStateWritten = relayOpen(relayId);
     }
+
+    return relayStateWritten;
 }
 
-bool relayMatrixInsertModule(int submoduleId, int row, int col) {
-    bool moduleAdded = addWithNeighbor(row, col, submoduleId);
-    if(moduleAdded) {
-        printf("%s\n", "se añadió el modulo");
-    } else {
-        printf("%s\n", "no se añadió el modulo");
+int relayMatrixReadStateOfRelay(int relayId) {
+    return relayReadState(relayId);
+}
+
+//=====[Implementations of private functions]===================================
+static bool addWithNeighbor(int row, int column, int submoduleId) {
+    if (row < 0 || column < 0) {
+        return false;
     }
-    return moduleAdded;
-}
 
-static void managerModuleSetRelay11Id(int idToAssign) {
-    managerRelaysId.relay11Id = idToAssign;
-}
-
-static void managerModuleSetRelay12Id(int idToAssign) {
-    managerRelaysId.relay12Id = idToAssign;
-}
-
-static void managerModuleSetRelay21Id(int idToAssign) {
-    managerRelaysId.relay21Id = idToAssign;
-}
-
-static void managerModuleSetRelay22Id(int idToAssign) {
-    managerRelaysId.relay22Id = idToAssign;
-}
-
-static void managerWriteStateOfRelay(int relayId, int state) {
-    if(relayId == managerRelaysId.relay11Id)
-        ManagerRelay11.write(state);
-    else if(relayId == managerRelaysId.relay12Id)
-        ManagerRelay12.write(state);
-    else if(relayId == managerRelaysId.relay21Id)
-        ManagerRelay21.write(state);
-    else if(relayId == managerRelaysId.relay22Id)
-        ManagerRelay22.write(state);
-}
-
-void relayMatrixToggleRelay(int relayId) {
-    if(relayId == managerRelaysId.relay11Id) {
-        (ManagerRelay11.read()) ? ManagerRelay11.write(OFF) : ManagerRelay11.write(ON);
+    // Adjust the row size if needed
+    if (row >= matrixOfModules.size()) {
+        matrixOfModules.resize(row + 1, std::vector<int>(0, 0));
     }
-    else if(relayId == managerRelaysId.relay12Id) {
-        (ManagerRelay12.read()) ? ManagerRelay12.write(OFF) : ManagerRelay12.write(ON);
+
+    // Adjust the column size if needed for the specified row
+    if (column >= matrixOfModules[row].size()) {
+        matrixOfModules[row].resize(column + 1, 0);
     }
-    else if(relayId == managerRelaysId.relay21Id) {
-        (ManagerRelay21.read()) ? ManagerRelay21.write(OFF) : ManagerRelay21.write(ON);
+
+    // Check if the position is already occupied
+    if (matrixOfModules[row][column] != 0) {
+        return false;
     }
-    else if(relayId == managerRelaysId.relay22Id) {
-        (ManagerRelay22.read()) ? ManagerRelay22.write(OFF) : ManagerRelay22.write(ON);
+
+    // Check directions (left, below, right and top)
+    if (column > 0 && hasModule(row, column - 1)) {
+        matrixOfModules[row][column] = submoduleId;
+        return true;
     }
-    else
-        i2cComToggleRelay(relayId);
+
+    if (row < matrixOfModules.size() - 1 && hasModule(row + 1, column)) {
+        matrixOfModules[row][column] = submoduleId;
+        return true;
+    }
+
+    if (column < matrixOfModules[row].size() - 1 && hasModule(row, column + 1)) {
+        matrixOfModules[row][column + 1] = submoduleId;
+        return true;
+    }
+
+    if (row > 0 && hasModule(row - 1, column)) {
+        matrixOfModules[row][column] = submoduleId;
+        return true;
+    }
+
+    // No neighboring module found
+    return false;
 }
+
+static void initializeManagerModule() {
+    vector<int> aux;
+    aux.push_back(MANAGER_MODULE_ID);
+    matrixOfModules.push_back(aux);
+
+    openRelaysOfManager();
+}
+
+static bool hasModule(int row, int column) {
+    return row >= 0 && row < matrixOfModules.size() && column >= 0 && column < matrixOfModules[row].size() && matrixOfModules[row][column] != 0;
+}
+

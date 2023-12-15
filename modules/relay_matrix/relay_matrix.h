@@ -2,11 +2,12 @@
 #define RELAY_MATRIX__H
 
 void relayMatrixInit();
-void relayMatrixUpdate();
+void relayMatrixUpdate(bool changeInSubmodules);
 void relayMatrixGenerate();
 bool relayMatrixInsertModule(int submoduleId, int row, int col);
-void relayMatrixWriteStateOfRelay(int relayId, int state);
 void relayMatrixPrintMatrix();
-void relayMatrixToggleRelay(int relayId);
+bool relayMatrixToggleRelay(int relayId);
+int relayMatrixReadStateOfRelay(int relayId);
+bool relayMatrixWriteStateOfRelay(int relayId, int state);
 void relayMatrixClearMatrixes();
 #endif

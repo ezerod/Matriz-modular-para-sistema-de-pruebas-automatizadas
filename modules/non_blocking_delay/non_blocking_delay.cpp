@@ -1,70 +1,46 @@
 //=====[Libraries]=============================================================
-
 #include "non_blocking_delay.h"
 
-//=====[Declaration of private defines]========================================
-
-//=====[Declaration of private data types]=====================================
-
-//=====[Declaration and initialization of public global objects]===============
-
-//=====[Declaration of external public global variables]=======================
-
-//=====[Declaration and initialization of public global variables]=============
-
 //=====[Declaration and initialization of private global variables]============
-
-static tick_t tickCounter = 0;
+static Ticker ticker;
+static tick_t tickCounter;
 
 //=====[Declarations (prototypes) of private functions]========================
+void tickerCallback();
+tick_t tickRead();
 
-void tickerCallback( );
-tick_t tickRead( );
-
-//=====[Implementations of private methods]====================================
-
-void nonBlockingDelay::tickInit() {
-    this->ticker.attach( tickerCallback, 1ms );
+//=====[Implementations of public functions]===================================
+void tickInit() {
+    ticker.attach( tickerCallback, 1ms);
 }
 
-//=====[Implementations of public methods]=====================================
-
-nonBlockingDelay::nonBlockingDelay( tick_t durationValue ) {
-    this->tickInit( );
-    this->duration = durationValue;
-    this->isRunning = false;
+void nonBlockingDelayInit( nonBlockingDelay_t * delay, tick_t durationValue ) {
+    tickInit();
+    delay->duration = durationValue;
+    delay->isRunning = false;
 }
 
-bool nonBlockingDelay::read( ) {
+bool nonBlockingDelayRead( nonBlockingDelay_t * delay ) {
     bool timeArrived = false;
     tick_t elapsedTime;
-
-    if( !this->isRunning ) {
-        this->startTime = tickCounter;
-        this->isRunning = true;
-    }    
+    if( !delay->isRunning ) {
+        delay->startTime = tickCounter;
+        delay->isRunning = true;
+    } 
     else {
-        elapsedTime = tickCounter - this->startTime;
-        if ( elapsedTime >= this->duration ) {
-            timeArrived = true;
-            this->isRunning = false;
+        elapsedTime = tickCounter - delay->startTime;
+        if ( elapsedTime >= delay->duration ) {
+        timeArrived = true;
+        delay->isRunning = false;
         }
     }
-
     return timeArrived;
 }
 
-void nonBlockingDelay::write( tick_t durationValue ) {
-    this->duration = durationValue;
+void nonBlockingDelayWrite( nonBlockingDelay_t * delay, tick_t durationValue ) {
+    delay->duration = durationValue;
 }
-
 //=====[Implementations of private functions]==================================
-
-void tickerCallback( ) 
-{
+void tickerCallback( void ) {
     tickCounter++;
-}
-
-tick_t tickRead( ) {
-    return tickCounter;
 }

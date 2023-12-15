@@ -1,15 +1,22 @@
 //=====[#include guards - begin]===============================================
-#ifndef SWITCHING_MATRIX_SYSTEM__H
-#define SWITCHING_MATRIX_SYSTEM__H
 
+#ifndef _SD_CARD_H_
+#define _SD_CARD_H_
+
+#include "mbed.h"
 //=====[Declaration of public defines]=========================================
-#define MAX_QTY_OF_SUBMODULES 128
+
+#define SD_CARD_MAX_FILE_LIST       10
+#define SD_CARD_FILENAME_MAX_LENGTH 32
 
 //=====[Declaration of public data types]======================================
 
 //=====[Declarations (prototypes) of public functions]=========================
-void switchingMatrixSystemInit();
-void switchingMatrixSystemUpdate();
+
+bool sdCardInit();
+bool sdCardWriteFile( FILE* sdCardFilePointer, const char* writeBuffer );
+
 
 //=====[#include guards - end]=================================================
-#endif //SWITCHING_MATRIX_SYSTEM__H
+
+#endif // _SD_CARD_H_

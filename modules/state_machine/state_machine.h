@@ -3,6 +3,8 @@
 
 
 typedef enum{
+    SET_DATE,
+    SET_TIME,
     START_SET_UP_MODULE,
     SET_ROW_POSITION_OF_MODULE,
     SET_COL_POSITION_OF_MODULE,
